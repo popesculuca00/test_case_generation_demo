@@ -37,6 +37,7 @@ def bg_init_all_models():
         all_models[model_name] = ModelInference(model_path)
     return all_models
 
+
 @st.cache_resource
 def get_model(model_name):
     model_name = {j: i for (i, j) in available_models.items()}[model_name]
@@ -67,6 +68,26 @@ def main():
                 index=None
             )
 
+        
+    with test_col:
+        st.subheader("test_source.py")
+        model_selector_col, gpu_monitor_col = st.columns([0.6, 0.4])
+
+        with model_selector_col:
+            selected_model = st.selectbox(
+                "Select a model:",
+                list(available_models.keys()),
+                label_visibility="collapsed",
+                placeholder="Select a model",
+                index=None
+            )
+
+        with gpu_monitor_col:
+            render_gpu_monitor()
+
+
+    input_code_col, generation_col = st.columns([0.5, 0.5])
+    with input_code_col:
         if st.session_state["model"]:
             with cache_erase_col:
                 if st.button("Empty Cache"):
@@ -92,52 +113,45 @@ def main():
             )
             user_code = code_snippets[selected_snippet]
 
-        
-    with test_col:
-        st.subheader("test_source.py")
-        model_selector_col, gpu_monitor_col = st.columns([0.6, 0.4])
 
-        with model_selector_col:
-            selected_model = st.selectbox(
-                "Select a model:",
-                list(available_models.keys()),
-                label_visibility="collapsed",
-                placeholder="Select a model",
-                index=None
-            )
+    with generation_col:
 
-        with gpu_monitor_col:
-            render_gpu_monitor()
+        if  available_models[selected_model]:
+            if (not st.session_state["model"]) or available_models[selected_model] != st.session_state["model"].model_path:
+                del st.session_state["model"]
+                st.session_state["model"] = get_model(available_models[selected_model])
+                st.session_state["pytest_results"] = None
+                st.session_state["generated_pytest"] = EMPTY_TEST_MSG
+                st.rerun()
 
-        with st.spinner("Loading model.."):
-            if  available_models[selected_model]:
-                if (not st.session_state["model"]) or available_models[selected_model] != st.session_state["model"].model_path:
-                    del st.session_state["model"]
-                    st.session_state["model"] = get_model(available_models[selected_model])
-                    st.session_state["pytest_results"] = None
-                    st.session_state["generated_pytest"] = EMPTY_TEST_MSG
-                    st.rerun()
+        st.markdown("""
+        <style>
+        div.stSpinner > div {
+            text-align:right;
+            align-items: right;
+            justify-content: right;
+        }
+        </style>""", unsafe_allow_html=True)
+        if st.session_state["start_generation"]:
+            st.session_state["generated_pytest"] = ""
 
-        with st.spinner("Generating code.."):
-            if st.session_state["start_generation"]:
-                st.session_state["generated_pytest"] = ""
+            streaming_placeholder = st.empty()
 
-                streaming_placeholder = st.empty()
-
-                for token in st.session_state["model"].generate_stream(st.session_state["start_generation"]):
+            with st.spinner("Generating code.."):
+                for token in st.session_state["model"].generate_stream(st.session_state["start_generation"]):    
                     streaming_placeholder.code(st.session_state["generated_pytest"] + token)
                     st.session_state["generated_pytest"] += token
-                print("Done generating!")
+                    print("Done generating!")
 
-                
-                st.session_state["generated_pytest"] = extract_code(st.session_state["generated_pytest"])
-                st.session_state["model"].last_response = st.session_state["generated_pytest"] 
-                streaming_placeholder.empty()
-                st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
+            
+            st.session_state["generated_pytest"] = extract_code(st.session_state["generated_pytest"])
+            st.session_state["model"].last_response = st.session_state["generated_pytest"] 
+            streaming_placeholder.empty()
+            st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
 
-                st.session_state["start_generation"] = False
-            else:
-                st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
+            st.session_state["start_generation"] = False
+        else:
+            st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
 
 
     generate_col, run_col, clear_col, _ = st.columns([0.1, 0.1, 0.1, 0.7])
@@ -175,6 +189,5 @@ def main():
         st.rerun()
 
 if __name__ == "__main__":
-    print("AAAAAAAAAAAAAAAAA")
     init_session_state()
     main()
