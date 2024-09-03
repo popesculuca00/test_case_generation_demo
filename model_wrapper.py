@@ -2,13 +2,15 @@
 import sys
 from threading import Thread
 import re
+import time
 
 from collections import defaultdict
 import itertools
 
 from unsloth import FastLanguageModel
-from transformers import AutoTokenizer, AutoModelForCausalLM, TextStreamer, TextIteratorStreamer
+from transformers import TextIteratorStreamer
 import torch
+import streamlit as st
 
 
 from constants import PROMPT_TEMPLATE, alpaca_prompt, available_models
@@ -18,7 +20,7 @@ class ModelInference:
     def __init__(self, model_path="outputs/checkpoint-7000", max_seq_length=4096, load_in_4bit=True):
         self.is_unsloth = "outputs" in model_path.lower()
         if "llama" in model_path.lower():
-            model_path = "unsloth/Meta-Llama-3.1-8B-bnb-4bit" #"unsloth/Hermes-3-Llama-3.1-8B"#
+            model_path = "unsloth/Meta-Llama-3.1-8B-bnb-4bit"
         if "phi" in model_path.lower():
             model_path = "unsloth/Phi-3-mini-4k-instruct"
         self.prompt_template = None
@@ -79,12 +81,10 @@ class ModelInference:
 
 
     def generate_stream(self, input_text, max_new_tokens=4096, top_p=0.9):
-
         if self.prompt_template:
             input_text = self.prompt_template.format(input_text, "")
 
         if self.cache[input_text] is not None:
-            print("Using cached values..")
             for i in self.cache[input_text]:
                 yield i
             return
@@ -118,3 +118,20 @@ class ModelInference:
             token = token.replace("\n", "  \n")
             self.cache[input_text] = self.cache[input_text] + token
             yield token
+
+
+@st.cache_resource
+def bg_init_all_models():
+    all_models = {}
+    for model_name, model_path in available_models.items():
+        all_models[model_name] = ModelInference(model_path)
+    return all_models
+
+
+@st.cache_resource
+def get_model(model_name):
+    model_name = {j: i for (i, j) in available_models.items()}[model_name]
+
+    while model_name not in st.session_state["loaded_models"].keys():
+        time.sleep(3)
+    return st.session_state["loaded_models"][model_name]

@@ -25,14 +25,15 @@ def get_gpu_memory_info():
     pynvml.nvmlShutdown()
     return total, used, free
 
-@st.fragment(run_every=1)
+# @st.fragment(run_every=1)
 def render_gpu_monitor():
-    utilization_text = st.empty()
-    progress_bar = st.progress(0)
-    total, used, free = get_gpu_memory_info()
-    utilization = used / total
-    utilization_text.text(f"Memory Utilization: {utilization:.2%}")
-    progress_bar.progress(int(utilization * 100))
+    pass
+    # utilization_text = st.empty()
+    # progress_bar = st.progress(0)
+    # total, used, free = get_gpu_memory_info()
+    # utilization = used / total
+    # utilization_text.text(f"Memory Utilization: {utilization:.2%}")
+    # progress_bar.progress(int(utilization * 100))
 
 
 def visualize_pytest_results(pytest_results):
