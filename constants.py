@@ -87,22 +87,3 @@ available_models.update({
     "Phi-3": "unsloth/Phi-3-mini-4k-instruct"
 })
 
-def extract_code(response):
-    pattern = r'```(?:python)?\n?(.*?)```'
-    matches = re.findall(pattern, response, re.DOTALL)
-    
-    if matches:
-        return '\n\n'.join(match.strip() for match in matches)
-    else:
-        return response.strip()
-    
-
-def get_gpu_memory_info():
-    pynvml.nvmlInit()
-    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
-    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
-    total = mem_info.total / 1024**2
-    used = mem_info.used / 1024**2
-    free = mem_info.free / 1024**2
-    pynvml.nvmlShutdown()
-    return total, used, free

@@ -38,7 +38,7 @@ class ModelInference:
                 model_name=model_path,
                 max_seq_length=4096,
                 dtype=torch.float16,
-                load_in_4bit=False
+                load_in_4bit=True
             )
             FastLanguageModel.for_inference(self.model) 
         self.model_path = model_path

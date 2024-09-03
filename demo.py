@@ -1,17 +1,14 @@
-
-import sys
+import time
 from threading import Thread
-import re
 import streamlit as st
 st.set_page_config(layout="wide")
 
-import altair as alt
-import pandas as pd
+
 from pytest_runner import run_pytest
 
 from model_wrapper import ModelInference
 from constants import code_snippets, available_models, EMPTY_TEST_MSG
-from constants import extract_code, get_gpu_memory_info
+from utils import extract_code, render_gpu_monitor, visualize_pytest_results
 
 
 def init_session_state():
@@ -30,66 +27,26 @@ def init_session_state():
     if "cnt_code" not in st.session_state.keys():
         st.session_state["cnt_code"] = list(code_snippets.keys())[0]
 
+    if "loaded_models" not in st.session_state.keys():
+        st.session_state["loaded_models"] = bg_init_all_models()
 
+@st.cache_resource
+def bg_init_all_models():
+    all_models = {}
+    for model_name, model_path in available_models.items():
+        all_models[model_name] = ModelInference(model_path)
+    return all_models
 
 @st.cache_resource
 def get_model(model_name):
-    return ModelInference(model_name)
+    model_name = {j: i for (i, j) in available_models.items()}[model_name]
 
-
-def visualize_pytest_results(pytest_results):
-    st.subheader("Pytest Results")
-    cov_col, num_fails_col, distrib_col = st.columns([0.33, 0.33, 0.33])
-    all_passes = re.findall("test_source.py::.*PASSED", pytest_results["stdout"])
-    all_errors = re.findall("\\nFAILED test_source.py::[^\\n]*", pytest_results["stdout"])
-
-    with cov_col:
-        st.metric("Test Coverage", f"{pytest_results['coverage']}%")
-
-    with num_fails_col:
-        st.metric("Failed Assertions", pytest_results['failed_assertions'])
-
-    with distrib_col:
-        chart_data = pd.DataFrame({
-            'Category': ['Passed', 'Failed'],
-            'Count': [len(all_passes), len(all_errors)]
-        })
-
-        chart = alt.Chart(chart_data).mark_bar().encode(
-            x='Category',
-            y='Count',
-            color=alt.condition(
-                alt.datum.Category == 'Passed',
-                alt.value('green'),
-                alt.value('red')
-            )
-        ).properties(
-            width=300,
-            height=200,
-            title='Test Results'
-        )
-
-        st.altair_chart(chart)
-
-    if pytest_results['stdout']:
-        results_col, msg_col = st.columns([0.5, 0.5])
-
-        with results_col:
-            st.subheader("Test Overview")
-            for passed_test in all_passes:
-                st.success(passed_test)
-
-            for error in all_errors:
-                st.error(error)
-
-        with msg_col:
-            st.subheader("Standard Output")
-            st.text(pytest_results['stdout'])
-
-        st.text(pytest_results["stderr"])
-
+    while model_name not in st.session_state["loaded_models"].keys():
+        time.sleep(3)
+    return st.session_state["loaded_models"][model_name]
 
 def main():
+
     _, title_col, _ = st.columns([0.4, 0.3, 0.3])
     with title_col:
         st.title("Unit test generator")
@@ -114,6 +71,9 @@ def main():
             with cache_erase_col:
                 if st.button("Empty Cache"):
                     st.session_state["model"].empty_cache()
+                    st.session_state["cnt_code"] = selected_snippet
+                    st.session_state["pytest_results"] = None
+                    st.session_state["generated_pytest"] = EMPTY_TEST_MSG
                     st.rerun()
 
         initial_code = code_snippets[selected_snippet]
@@ -147,12 +107,7 @@ def main():
             )
 
         with gpu_monitor_col:
-            utilization_text = st.empty()
-            progress_bar = st.progress(0)
-            total, used, free = get_gpu_memory_info()
-            utilization = used / total
-            utilization_text.text(f"Memory Utilization: {utilization:.2%}")
-            progress_bar.progress(int(utilization * 100))
+            render_gpu_monitor()
 
         with st.spinner("Loading model.."):
             if  available_models[selected_model]:
@@ -220,5 +175,6 @@ def main():
         st.rerun()
 
 if __name__ == "__main__":
+    print("AAAAAAAAAAAAAAAAA")
     init_session_state()
     main()
