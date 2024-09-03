@@ -1,5 +1,6 @@
 import re
-
+from collections import defaultdict
+import pynvml
 
 PROMPT_TEMPLATE = """
 ### Input:
@@ -26,7 +27,25 @@ You *MUST* always provide the fully updated code with no other explanations.
 {}
 """
 
-code_snippets = {
+
+class CustomDefaultDict(defaultdict):
+    def __init__(self, default_factory=None, *args, **kwargs):
+        super().__init__(default_factory, *args, **kwargs)
+
+    def keys(self):
+        return [key for key in super().keys() if key is not None]
+
+    def items(self):
+        return [(key, value) for key, value in super().items() if key is not None]
+
+    def __iter__(self):
+        return iter(self.keys())
+    
+
+
+
+code_snippets = CustomDefaultDict(lambda : "")
+code_snippets.update({
     "Find missing number": "def find_missing_number(numbers):\n    n = len(numbers) + 1\n    expected_sum = n * (n + 1) // 2\n    actual_sum = sum(numbers)\n    return {'result': expected_sum - actual_sum}",
     "Degrees": """def dms(degrees):\n    degrees_int = int(abs(degrees))\t # integer degrees\n    degrees_frac = abs(degrees) - degrees_int  # fractional degrees, used to compute minutes\n    minutes_int = float(int(degrees_frac * 60))  # integer minutes\n    minutes_frac = degrees_frac - minutes_int / 60  # fractional minutes, used to compute seconds\n    seconds = minutes_frac * 3600  # decimal seconds\n\n    # Handle sign.  Degrees portion will contain the sign of the coordinate.\n    # Minutes and seconds will always be positive.\n    # sign function returns -1, 0, +1 for x < 0, x == 0, x > 0, respectively\n    if degrees < 0:\n        degrees_int *= -1\n\n    return degrees_int, minutes_int, seconds""",
     "Transform grad": """def transform_grad_batch_min_max(batch_grad):\n\n    batch_size = batch_grad.shape[0]\n    return [\n        batch_size * batch_grad.data.min().item(),\n        batch_size * batch_grad.data.max().item(),\n    ]""",
@@ -57,15 +76,16 @@ code_snippets = {
     "Epoch scheduler": """def lambda_lr_schedule(epoch):\r\n    \r\n    lr_scale = 1.\r\n    if epoch > 180:\r\n        lr_scale = 0.5e-3\r\n    elif epoch > 160:\r\n        lr_scale = 1e-3\r\n    elif epoch > 120:\r\n        lr_scale = 1e-2\r\n    elif epoch > 80:\r\n        lr_scale = 1e-1\r\n    return lr_scale""",
     "Get position leftmost digit": """def get_position_of_leftmost_digit(number):\r\n    \r\n\r\n    if number == 0:\r\n        return None\r\n    number = abs(number)\r\n\r\n    pos = 0\r\n    while (number - number % (10 ** -pos)) != 0:\r\n        pos -= 1\r\n    while (number - number % (10 ** -pos)) == 0:\r\n        pos += 1\r\n    return pos""",
     "Kinetic energy": """import torch\r\n\r\ndef kin_energy(momentum, inv_mass):\r\n    \r\n    if isinstance(inv_mass, torch.Tensor):\r\n        if inv_mass.numel() == momentum.numel(): # Assuming diagonal mass\r\n            ke = .5 * torch.dot(momentum, inv_mass * momentum)\r\n        else: # Assuming full matrix\r\n            ke = .5 *  torch.dot(momentum, torch.matmul(inv_mass, momentum))\r\n    else: # Assuming a single scalar\r\n        ke = .5 * inv_mass * torch.dot(momentum, momentum)\r\n\r\n    return ke""",
-
     "Custom": ""
-}
+})
 
-available_models = {
+
+available_models = CustomDefaultDict(lambda: "")
+available_models.update({
     "Fine-Tuned": "outputs/checkpoint-7000",
     "Llama 3.1 8b": "unsloth/Meta-Llama-3.1-8B-bnb-4bit",
     "Phi-3": "unsloth/Phi-3-mini-4k-instruct"
-}
+})
 
 def extract_code(response):
     pattern = r'```(?:python)?\n?(.*?)```'
@@ -75,3 +95,14 @@ def extract_code(response):
         return '\n\n'.join(match.strip() for match in matches)
     else:
         return response.strip()
+    
+
+def get_gpu_memory_info():
+    pynvml.nvmlInit()
+    handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+    mem_info = pynvml.nvmlDeviceGetMemoryInfo(handle)
+    total = mem_info.total / 1024**2
+    used = mem_info.used / 1024**2
+    free = mem_info.free / 1024**2
+    pynvml.nvmlShutdown()
+    return total, used, free

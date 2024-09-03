@@ -18,7 +18,7 @@ class ModelInference:
     def __init__(self, model_path="outputs/checkpoint-7000", max_seq_length=4096, load_in_4bit=True):
         self.is_unsloth = "outputs" in model_path.lower()
         if "llama" in model_path.lower():
-            model_path = "unsloth/Meta-Llama-3.1-8B-bnb-4bit"
+            model_path = "unsloth/Meta-Llama-3.1-8B-bnb-4bit" #"unsloth/Hermes-3-Llama-3.1-8B"#
         if "phi" in model_path.lower():
             model_path = "unsloth/Phi-3-mini-4k-instruct"
         self.prompt_template = None
@@ -38,7 +38,7 @@ class ModelInference:
                 model_name=model_path,
                 max_seq_length=4096,
                 dtype=torch.float16,
-                load_in_4bit=True,
+                load_in_4bit=False
             )
             FastLanguageModel.for_inference(self.model) 
         self.model_path = model_path
@@ -49,6 +49,7 @@ class ModelInference:
         self.last_response = ""
         self.streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True)
         self.cache = defaultdict(lambda : None)
+        torch.cuda.empty_cache()
     
     def replace_spaces(self, text):
         def replacer(match):
@@ -59,7 +60,7 @@ class ModelInference:
     def empty_cache(self):
         self.cache = defaultdict(lambda : None)
 
-    def generate(self, input_text, max_new_tokens=4096, temperature=0.7, top_p=0.9):
+    def generate(self, input_text, max_new_tokens=4096, top_p=0.9):
         if self.prompt_template:
             input_text = self.prompt_template.format(input_text, "")
         self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -69,7 +70,6 @@ class ModelInference:
             output = self.model.generate(
                 input_ids,
                 max_new_tokens=max_new_tokens,
-                # temperature=temperature,
                 top_p=top_p,
                 repetition_penalty=1.0,
                 use_cache=True,
@@ -78,7 +78,7 @@ class ModelInference:
         return self.tokenizer.decode(output[0], skip_special_tokens=False)
 
 
-    def generate_stream(self, input_text, max_new_tokens=4096, temperature=0.7, top_p=0.9):
+    def generate_stream(self, input_text, max_new_tokens=4096, top_p=0.9):
 
         if self.prompt_template:
             input_text = self.prompt_template.format(input_text, "")
@@ -87,7 +87,6 @@ class ModelInference:
             print("Using cached values..")
             for i in self.cache[input_text]:
                 yield i
-            # del self.cache[input_text]
             return
         else:
             self.cache[input_text] = ""
@@ -98,7 +97,6 @@ class ModelInference:
         kwargs = {
                 "input_ids": input_ids,
                 "max_new_tokens": max_new_tokens,
-                "temperature": temperature,
                 "top_p":top_p,
                 "repetition_penalty":1.1,
                 "use_cache":True,
