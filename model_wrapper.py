@@ -120,18 +120,24 @@ class ModelInference:
             yield token
 
 
-@st.cache_resource
 def bg_init_all_models():
     all_models = {}
+    pb = st.progress(0, "Loading Models..")
     for model_name, model_path in available_models.items():
-        all_models[model_name] = ModelInference(model_path)
+        pb.progress(len(all_models.keys()) * 0.3333, text = f"Loading {model_name} {'model' if model_name=='Fine-Tuned' else ''}")
+        all_models[model_name] = fetch_individual_model(model_path)
+    pb.progress(1.0, "Loaded all models")
+    time.sleep(0.2)
+    pb.empty()
     return all_models
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner=False)
+def fetch_individual_model(model_path):
+    return ModelInference(model_path)
+
+
+@st.cache_resource(show_spinner=False)
 def get_model(model_name):
     model_name = {j: i for (i, j) in available_models.items()}[model_name]
-
-    while model_name not in st.session_state["loaded_models"].keys():
-        time.sleep(3)
     return st.session_state["loaded_models"][model_name]

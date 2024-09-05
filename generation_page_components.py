@@ -33,10 +33,14 @@ def render_selector_container():
             )
 
     with test_col:
-        _, subheader_col, _ = st.columns([0.2, 0.3, 0.5])
+        _, subheader_col, _ = st.columns([0.2, 0.4, 0.4])
         with subheader_col:
             st.subheader("test_source.py")
-        model_selector_col, gpu_monitor_col = st.columns([0.6, 0.4])
+
+        if st.session_state["loaded_models"] is None:
+            model_selector_col, model_loading_col = st.columns([0.75, 0.25])
+        else: 
+            model_selector_col, model_loading_col = st.columns([0.99, 0.01])
 
         with model_selector_col:
             selected_model = st.selectbox(
@@ -44,11 +48,10 @@ def render_selector_container():
                 list(available_models.keys()),
                 label_visibility="collapsed",
                 placeholder="Select a model",
-                index=None
-            )
-        with gpu_monitor_col:
-            render_gpu_monitor()    
-    return selected_snippet, selected_model, cache_erase_col
+                index=None,
+                disabled= not st.session_state["loaded_models"]
+            )   
+    return selected_snippet, selected_model, cache_erase_col, model_loading_col
 
 
 def render_generation_controls(user_code):
@@ -136,7 +139,6 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
                 for token in st.session_state["model"].generate_stream(st.session_state["start_generation"]):    
                     streaming_placeholder.code(st.session_state["generated_pytest"] + token, language="python", line_numbers=True)
                     st.session_state["generated_pytest"] += token
-                print("Done generating!")
 
             extracted_code = extract_code(st.session_state["generated_pytest"])      
             if extracted_code != st.session_state["generated_pytest"]:
@@ -148,6 +150,14 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
             st.rerun()
         else:
             st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
-    return clear_col
+
+
+    if st.session_state["pytest_results"]:
+        visualize_pytest_results(st.session_state["pytest_results"])
+        with clear_col:
+            if st.button("Clear Results"):
+                st.session_state["pytest_results"] = None
+                st.rerun()
+
 
 

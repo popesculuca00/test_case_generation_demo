@@ -74,15 +74,17 @@ def visualize_pytest_results(pytest_results):
         results_col, msg_col = st.columns([0.5, 0.5])
 
         with results_col:
-            st.subheader("Test Overview")
-            for passed_test in all_passes:
-                st.success(passed_test)
+            with st.expander("Test Overview"):
+                for passed_test in all_passes:
+                    st.success(passed_test)
 
-            for error in all_errors:
-                st.error(error)
+                for error in all_errors:
+                    st.error(error)
 
         with msg_col:
-            st.subheader("Standard Output")
-            st.text(pytest_results['stdout'])
+            with st.expander("Standard Output"):
+                st.text(pytest_results['stdout'])
 
-        st.text(pytest_results["stderr"])
+            if pytest_results["stderr"]:
+                with st.expander("Standard Error"):
+                    st.text(pytest_results["stderr"])
