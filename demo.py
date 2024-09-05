@@ -1,13 +1,10 @@
 import streamlit as st
-st.set_page_config(layout="wide",
-                   page_title="Test case generation demo"
-                   )
+from streamlit_extras.stylable_container import stylable_container
+st.set_page_config(layout="wide", page_title="Test case generation demo")
 
-
-from generation_page_components import render_title, render_selector_container, render_code_windows
-from model_wrapper import  bg_init_all_models
 from constants import code_snippets, EMPTY_TEST_MSG
-from utils import visualize_pytest_results
+from generation_page_components import render_title, render_selector_container, render_code_windows
+from model_wrapper import bg_init_all_models
 
 
 
@@ -31,20 +28,38 @@ def init_session_state():
         st.session_state["loaded_models"] = None
 
 
-
 def main():
     render_title()
     with st.container():
-        selected_snippet, selected_model, cache_erase_col, model_loading_col = render_selector_container()
+        selected_snippet, selected_model, model_ctrl_col = render_selector_container()
     for _ in range(2):
         st.text("")
     with st.container():
-        render_code_windows(cache_erase_col, selected_snippet, selected_model)
+        render_code_windows(selected_snippet, selected_model)
 
-    with model_loading_col:
+    with model_ctrl_col:
         if st.session_state["loaded_models"] is None:
             st.session_state["loaded_models"] = bg_init_all_models()
             st.rerun()
+        else:
+
+            with stylable_container(
+                key="empty_cache",
+                css_styles="""
+                    button {
+                        display: flex;
+                        justify-content: flex-end;
+                        border-radius: 20px;
+                        margin-left: auto; 
+                        margin-right: 0;
+                    }
+                    """,):
+                if st.button("Empty Cache", disabled = not st.session_state["model"]):
+                    st.session_state["model"].empty_cache()
+                    st.session_state["cnt_code"] = selected_snippet
+                    st.session_state["pytest_results"] = None
+                    st.session_state["generated_pytest"] = EMPTY_TEST_MSG
+                    st.rerun()
 
                 
     if selected_snippet != st.session_state["cnt_code"]:

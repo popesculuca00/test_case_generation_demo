@@ -1,6 +1,5 @@
-import re
 from collections import defaultdict
-import pynvml
+
 
 PROMPT_TEMPLATE = """
 ### Input:
@@ -40,8 +39,6 @@ class CustomDefaultDict(defaultdict):
 
     def __iter__(self):
         return iter(self.keys())
-    
-
 
 
 code_snippets = CustomDefaultDict(lambda : "")

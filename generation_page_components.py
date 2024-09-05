@@ -1,9 +1,9 @@
 import streamlit as st
 
-from pytest_runner import run_pytest
-from model_wrapper import get_model
 from constants import code_snippets, available_models, EMPTY_TEST_MSG
-from utils import extract_code, render_gpu_monitor, visualize_pytest_results
+from model_wrapper import get_model
+from pytest_runner import run_pytest
+from utils import extract_code, visualize_pytest_results
 
 
 def render_title():
@@ -21,16 +21,14 @@ def render_selector_container():
         _, subheader_col, _ = st.columns([0.2, 0.3, 0.5])
         with subheader_col:
             st.subheader("source.py")
-        code_selector_col, cache_erase_col = st.columns([0.82, 0.18])
 
-        with code_selector_col:
-            selected_snippet = st.selectbox(
-                "Select a code snippet or choose 'Custom':",
-                list(code_snippets.keys()),
-                label_visibility="collapsed",
-                placeholder="Select a code snippet or choose 'Custom'",
-                index=None
-            )
+        selected_snippet = st.selectbox(
+            "Select a code snippet or choose 'Custom':",
+            list(code_snippets.keys()),
+            label_visibility="collapsed",
+            placeholder="Select a code snippet or choose 'Custom'",
+            index=None
+        )
 
     with test_col:
         _, subheader_col, _ = st.columns([0.2, 0.4, 0.4])
@@ -40,7 +38,7 @@ def render_selector_container():
         if st.session_state["loaded_models"] is None:
             model_selector_col, model_loading_col = st.columns([0.75, 0.25])
         else: 
-            model_selector_col, model_loading_col = st.columns([0.99, 0.01])
+            model_selector_col, model_loading_col = st.columns([0.83, 0.17])
 
         with model_selector_col:
             selected_model = st.selectbox(
@@ -51,7 +49,7 @@ def render_selector_container():
                 index=None,
                 disabled= not st.session_state["loaded_models"]
             )   
-    return selected_snippet, selected_model, cache_erase_col, model_loading_col
+    return selected_snippet, selected_model, model_loading_col
 
 
 def render_generation_controls(user_code):
@@ -76,11 +74,8 @@ def render_generation_controls(user_code):
     return clear_col
 
 
-
-
-def render_code_windows(cache_erase_col, selected_snippet, selected_model):
+def render_code_windows(selected_snippet, selected_model):
     input_code_col, generation_col = st.columns([0.5, 0.5])
-
 
     st.markdown("""
     <style>
@@ -91,18 +86,8 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
     }
     </style>""", unsafe_allow_html=True)
 
-
     with st.spinner("Fetching code.."):
         with input_code_col:
-            if st.session_state["model"]:
-                with cache_erase_col:
-                    if st.button("Empty Cache"):
-                        st.session_state["model"].empty_cache()
-                        st.session_state["cnt_code"] = selected_snippet
-                        st.session_state["pytest_results"] = None
-                        st.session_state["generated_pytest"] = EMPTY_TEST_MSG
-                        st.rerun()
-
             initial_code = code_snippets[selected_snippet]
 
             if selected_snippet == "Custom":
@@ -120,7 +105,6 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
                 user_code = code_snippets[selected_snippet]
             clear_col = render_generation_controls(user_code)
 
-
     with generation_col:
         if  available_models[selected_model]:
             if (not st.session_state["model"]) or available_models[selected_model] != st.session_state["model"].model_path:
@@ -132,7 +116,6 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
 
         if st.session_state["start_generation"]:
             st.session_state["generated_pytest"] = ""
-
             streaming_placeholder = st.empty()
 
             with st.spinner("Generating code.."):
@@ -150,7 +133,6 @@ def render_code_windows(cache_erase_col, selected_snippet, selected_model):
             st.rerun()
         else:
             st.code(st.session_state["generated_pytest"], language="python", line_numbers=True)
-
 
     if st.session_state["pytest_results"]:
         visualize_pytest_results(st.session_state["pytest_results"])
