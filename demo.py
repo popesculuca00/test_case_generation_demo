@@ -1,16 +1,20 @@
 import streamlit as st
 from streamlit_extras.stylable_container import stylable_container
+
 st.set_page_config(layout="wide", page_title="Test case generation demo")
 
 from constants import code_snippets, EMPTY_TEST_MSG
-from generation_page_components import render_title, render_selector_container, render_code_windows
+from generation_page_components import (
+    render_title,
+    render_selector_container,
+    render_code_windows,
+)
 from model_wrapper import bg_init_all_models
-
 
 
 def init_session_state():
     if "model" not in st.session_state.keys():
-        st.session_state["model"] = None #ModelInference()
+        st.session_state["model"] = None  # ModelInference()
 
     if "start_generation" not in st.session_state.keys():
         st.session_state["start_generation"] = False
@@ -53,15 +57,15 @@ def main():
                         margin-left: auto; 
                         margin-right: 0;
                     }
-                    """,):
-                if st.button("Empty Cache", disabled = not st.session_state["model"]):
+                    """,
+            ):
+                if st.button("Empty Cache", disabled=not st.session_state["model"]):
                     st.session_state["model"].empty_cache()
                     st.session_state["cnt_code"] = selected_snippet
                     st.session_state["pytest_results"] = None
                     st.session_state["generated_pytest"] = EMPTY_TEST_MSG
                     st.rerun()
 
-                
     if selected_snippet != st.session_state["cnt_code"]:
         print("Resetting test results")
         st.session_state["cnt_code"] = selected_snippet

@@ -6,6 +6,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from functools import wraps
 
+
 def timeout(time_limit):
     def decorator(func):
         @wraps(func)
@@ -16,10 +17,13 @@ def timeout(time_limit):
                     return future.result(timeout=time_limit)
                 except TimeoutError:
                     executor.shutdown(wait=False)
-                    raise TimeoutError(f"{func.__name__} exceeded timeout of {time_limit} seconds")
-        return wrapper
-    return decorator
+                    raise TimeoutError(
+                        f"{func.__name__} exceeded timeout of {time_limit} seconds"
+                    )
 
+        return wrapper
+
+    return decorator
 
 
 def strip_ansi_escape_sequences(s):
@@ -63,6 +67,7 @@ def get_test_case_fails(result: subprocess.CompletedProcess[str]) -> str:
     # test_cases = re.findall("(FAILED.*)$", result.stdout)
     test_cases = re.findall("(FAILED\s*test_source.py.*)", result.stdout)
     return "\n".join(test_cases)
+
 
 @timeout(10)
 def run_pytest(
